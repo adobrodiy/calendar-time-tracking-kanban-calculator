@@ -1,9 +1,9 @@
 {
 	"id": "calendar-time-tracking-kanban-calculator",
-	"name": "CTTKC: calendar time tracking kanban calculator",
+	"name": "CTTKC",
 	"version": "0.1.0",
 	"minAppVersion": "0.15.0",
-	"description": "Demonstrates some of the capabilities of the Obsidian API.",
+	"description": "CTTKC: calendar time tracking kanban calculator",
 	"author": "adobrodiy",
 	"authorUrl": "https://github.com/adobrodiy",
 	"fundingUrl": "https://github.com/adobrodiy",
