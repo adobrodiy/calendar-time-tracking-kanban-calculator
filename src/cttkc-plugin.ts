@@ -2,6 +2,7 @@ import { Notice, Plugin } from 'obsidian';
 import { ISettings } from './settings.interface';
 import { CTTKCModal } from './cttkc-modal';
 import { SettingTab } from './setting-tab';
+import { Status } from './status';
 
 const DEFAULT_SETTINGS: ISettings = {
 	calendarUrl: '',
@@ -10,8 +11,14 @@ const DEFAULT_SETTINGS: ISettings = {
 
 export class CTTKCPlugin extends Plugin {
 	settings: ISettings;
+  status: Status;
 
 	async onload() {
+    this.status = new Status((oldCode, newCode) => {
+      // We can throw a error there to stop status transition
+      console.log(`Unexpected plugin status transition from ${oldCode} to ${newCode}. It can be an issue`);
+    });
+
 		await this.loadSettings();
 
 		// This creates an icon in the left ribbon.
@@ -33,12 +40,11 @@ export class CTTKCPlugin extends Plugin {
 			name: 'calculate',
 			callback: () => {
 				new CTTKCModal(this).open();
-				// loadCalendar(this);
 			}
 		});
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SettingTab(this.app, this));
+		this.addSettingTab(new SettingTab(this));
 	}
 
 	async loadSettings() {

@@ -1,6 +1,7 @@
 import { ButtonComponent, Modal, Setting } from 'obsidian';
 import { CTTKCPlugin } from './cttkc-plugin';
 import { handleCalendar } from './handle-calendar';
+import { StatusCode } from './status';
 
 export class CTTKCModal extends Modal {
 	private plugin: CTTKCPlugin;
@@ -10,22 +11,44 @@ export class CTTKCModal extends Modal {
 		startDate: string;
 		endDate: string;
 	};
-	private status: {
-		code: string;
-		message: string;
-	};
 	private statusSetting: Setting;
 	private submitButton: ButtonComponent;
 
 	constructor(plugin: CTTKCPlugin) {
 		super(plugin.app);
 		this.plugin = plugin;
+	}
 
+	private validateInputs() {
+		if (!this.options.calendarUrl) {
+			this.plugin.status.update(StatusCode.validationError, 'Calendar url is required');
+		} else if (!this.options.startDate) {
+			this.plugin.status.update(StatusCode.validationError, 'Start date is required');
+		} else if (!this.options.endDate) {
+			this.plugin.status.update(StatusCode.validationError, 'End date is required');
+		} else if (this.options.startDate >= this.options.endDate) {
+			this.plugin.status.update(StatusCode.validationError, 'Start date should be earlier than end date');
+		} else {
+			this.plugin.status.update(StatusCode.ready, 'Ready to calculate');
+		}
+	}
+
+	// It have to be arrow func as it needs context and passed as arg by link
+	private onStatusUpdate = (code: StatusCode, message: string) => {
+		this.statusSetting.setHeading().setName(message);
+		if ([StatusCode.validationError, StatusCode.loadingData, StatusCode.processingData].includes(code)) {
+			this.submitButton.setDisabled(true);
+		} else {
+			this.submitButton.setDisabled(false);
+		}
+	}
+
+	onOpen() {
 		this.setTitle('CTTKC: calculate');
 
 		this.options = {
-			calendarUrl: plugin.settings.calendarUrl,
-			tasksPrefix: plugin.settings.tasksPrefix,
+			calendarUrl: this.plugin.settings.calendarUrl,
+			tasksPrefix: this.plugin.settings.tasksPrefix,
 			startDate: '',
 			endDate: ''
 		};
@@ -35,22 +58,20 @@ export class CTTKCModal extends Modal {
 			.setDesc('It\'s a secret')
 			.addText(text => text
 				.setPlaceholder('Enter your calendar url')
-				.setValue(plugin.settings.calendarUrl)
+				.setValue(this.plugin.settings.calendarUrl)
 				.onChange(async (value) => {
 					this.options.calendarUrl = value;
 					this.validateInputs();
-					this.updateStatus();
 				}));
 
 		new Setting(this.contentEl)
 			.setName('Tasks prefix')
 			.addText(text => text
 				.setPlaceholder('Enter your tasks prefix')
-				.setValue(plugin.settings.tasksPrefix)
+				.setValue(this.plugin.settings.tasksPrefix)
 				.onChange(async (value) => {
 					this.options.tasksPrefix = value;
 					this.validateInputs();
-					this.updateStatus();
 				}));
 
 		new Setting(this.contentEl)
@@ -63,7 +84,6 @@ export class CTTKCModal extends Modal {
 						this.options.startDate = value;
 						console.log('options', this.options);
 						this.validateInputs();
-						this.updateStatus();
 					});
 				text.inputEl.setAttribute('type', 'date');
 			});
@@ -78,7 +98,6 @@ export class CTTKCModal extends Modal {
 						this.options.endDate = value;
 						console.log('options', this.options);
 						this.validateInputs();
-						this.updateStatus();
 					});
 				text.inputEl.setAttribute('type', 'date');
 			});
@@ -93,72 +112,22 @@ export class CTTKCModal extends Modal {
 						// this.close();
 						console.log('options', this.options);
 						// onSubmit(name);
-						this.status = {
-							code: 'loading',
-							message: 'Loading...'
-						};
-						this.updateStatus();
-						await handleCalendar(plugin, this.options);
-						this.status = {
-							code: 'loaded',
-							message: 'Loaded'
-						};
-						this.updateStatus();
+						this.plugin.status.update(StatusCode.loadingData, 'Loading...');
+						this.plugin.status.update(StatusCode.processingData, 'Processing...');
+						await handleCalendar(this.plugin, this.options);
+						this.plugin.status.update(StatusCode.processed, 'Processed');
 					});
 			});
 
+		this.plugin.status.addStatusUpdateListener(this.onStatusUpdate);
+
 		this.validateInputs();
-		this.updateStatus();
-	}
-
-	private validateInputs() {
-		if (!this.options.calendarUrl) {
-			this.status = {
-				code: 'error',
-				message: 'Calendar url is required'
-			};
-		} else if (!this.options.startDate) {
-			this.status = {
-				code: 'error',
-				message: 'Start date is required'
-			};
-		} else if (!this.options.endDate) {
-			this.status = {
-				code: 'error',
-				message: 'End date is required'
-			};
-		} else if (this.options.startDate >= this.options.endDate) {
-			this.status = {
-				code: 'error',
-				message: 'Start date should be earlier than end date'
-			};
-		} else {
-			this.status = {
-				code: 'ok',
-				message: 'Ready to calculate'
-			};
-		}
-	}
-	private updateStatus() {
-		this.statusSetting.setHeading().setName(this.status.message);
-		if (['error', 'loading'].includes(this.status.code)) {
-			this.submitButton.setDisabled(true);
-		} else if (['ok', 'loaded'].includes(this.status.code)) {
-			this.submitButton.setDisabled(false);
-		}
-		
-	}
-
-	onOpen() {
-		const {contentEl} = this;
-		// contentEl.setText('Woah!');
-
-		console.log('Modal opened');
 	}
 
 	onClose() {
-		const {contentEl} = this;
-		contentEl.empty();
+		this.plugin.status.removeStatusUpdateListener(this.onStatusUpdate);
+
+		this.containerEl.empty();
 
 		console.log('Modal closed');
 	}

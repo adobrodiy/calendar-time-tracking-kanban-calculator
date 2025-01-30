@@ -1,11 +1,11 @@
-import { App, PluginSettingTab, Setting} from 'obsidian';
+import { PluginSettingTab, Setting } from 'obsidian';
 import { CTTKCPlugin } from './cttkc-plugin';
 
 export class SettingTab extends PluginSettingTab {
   plugin: CTTKCPlugin;
 
-  constructor(app: App, plugin: CTTKCPlugin) {
-    super(app, plugin);
+  constructor(plugin: CTTKCPlugin) {
+    super(plugin.app, plugin);
     this.plugin = plugin;
   }
 
