@@ -1,6 +1,6 @@
-import { ButtonComponent, Modal, Setting } from 'obsidian';
+import { ButtonComponent, Modal, Setting, TFolder, requestUrl } from 'obsidian';
 import { CTTKCPlugin } from './cttkc-plugin';
-import { handleCalendar } from './handle-calendar';
+import { handleCalendarData } from './handle-calendar';
 import { StatusCode } from './status';
 
 export class CTTKCModal extends Modal {
@@ -10,6 +10,7 @@ export class CTTKCModal extends Modal {
 		tasksPrefix: string;
 		startDate: string;
 		endDate: string;
+		folder?: TFolder;
 	};
 	private statusSetting: Setting;
 	private submitButton: ButtonComponent;
@@ -29,7 +30,15 @@ export class CTTKCModal extends Modal {
 		} else if (this.options.startDate >= this.options.endDate) {
 			this.plugin.status.update(StatusCode.validationError, 'Start date should be earlier than end date');
 		} else {
-			this.plugin.status.update(StatusCode.ready, 'Ready to calculate');
+			const folder = this.plugin.app.vault.getFolderByPath('tasks');
+			if (!folder) {
+				this.plugin.status.update(StatusCode.validationError, 'Folder is not found');
+			} else if (!folder.children.length) {
+				this.plugin.status.update(StatusCode.validationError, 'Tasks notes are not found');
+			} else {
+				this.options.folder = folder;
+				this.plugin.status.update(StatusCode.ready, 'Ready to calculate');
+			}
 		}
 	}
 
@@ -113,9 +122,34 @@ export class CTTKCModal extends Modal {
 						console.log('options', this.options);
 						// onSubmit(name);
 						this.plugin.status.update(StatusCode.loadingData, 'Loading...');
-						this.plugin.status.update(StatusCode.processingData, 'Processing...');
-						await handleCalendar(this.plugin, this.options);
-						this.plugin.status.update(StatusCode.processed, 'Processed');
+						let error, data = '';
+						try {
+							data = (await requestUrl(this.options.calendarUrl)).text;
+						} catch(e) {
+							error = e;
+							this.plugin.status.update(StatusCode.error, 'Loading data failed');
+						}
+						
+						if (!error) {
+							this.plugin.status.update(StatusCode.processingData, 'Processing...');
+							try {
+								await handleCalendarData({
+									plugin: this.plugin,
+									data,
+									...this.options,
+									folder: this.options.folder as TFolder
+								});
+							} catch (e) {
+								error = e;
+								this.plugin.status.update(StatusCode.error, 'Processing data failed');
+							}							
+						}
+
+						if (!error) {
+							this.plugin.status.update(StatusCode.processed, 'Processed');
+						} else {
+							console.error(error);
+						}						
 					});
 			});
 
