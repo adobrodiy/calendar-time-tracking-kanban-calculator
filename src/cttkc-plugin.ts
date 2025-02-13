@@ -6,7 +6,8 @@ import { Status } from './status';
 
 const DEFAULT_SETTINGS: ISettings = {
 	calendarUrl: '',
-	tasksPrefix: ''
+	tasksPrefix: '',
+	tasksDirectory: ''
 }
 
 export class CTTKCPlugin extends Plugin {

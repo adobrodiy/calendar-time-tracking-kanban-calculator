@@ -2,12 +2,14 @@ import { ButtonComponent, Modal, Setting, TFolder, requestUrl } from 'obsidian';
 import { CTTKCPlugin } from './cttkc-plugin';
 import { handleCalendarData } from './handle-calendar';
 import { StatusCode } from './status';
+import { FolderSuggest } from './folder-suggest';
 
 export class CTTKCModal extends Modal {
 	private plugin: CTTKCPlugin;
 	private options: {
 		calendarUrl: string;
 		tasksPrefix: string;
+		tasksDirectory: string;
 		startDate: string;
 		endDate: string;
 		folder?: TFolder;
@@ -23,6 +25,10 @@ export class CTTKCModal extends Modal {
 	private validateInputs() {
 		if (!this.options.calendarUrl) {
 			this.plugin.status.update(StatusCode.validationError, 'Calendar url is required');
+		} else if (!this.options.tasksDirectory) {
+			this.plugin.status.update(StatusCode.validationError, 'Tasks directory is required');
+		} else if (!this.plugin.app.vault.getFolderByPath(this.options.tasksDirectory)) {
+			this.plugin.status.update(StatusCode.validationError, 'Tasks directory is not correct dir path');
 		} else if (!this.options.startDate) {
 			this.plugin.status.update(StatusCode.validationError, 'Start date is required');
 		} else if (!this.options.endDate) {
@@ -30,9 +36,9 @@ export class CTTKCModal extends Modal {
 		} else if (this.options.startDate >= this.options.endDate) {
 			this.plugin.status.update(StatusCode.validationError, 'Start date should be earlier than end date');
 		} else {
-			const folder = this.plugin.app.vault.getFolderByPath('tasks');
+			const folder = this.plugin.app.vault.getFolderByPath(this.options.tasksDirectory);
 			if (!folder) {
-				this.plugin.status.update(StatusCode.validationError, 'Folder is not found');
+				this.plugin.status.update(StatusCode.validationError, 'Tasks directory is not correct dir path');
 			} else if (!folder.children.length) {
 				this.plugin.status.update(StatusCode.validationError, 'Tasks notes are not found');
 			} else {
@@ -58,6 +64,7 @@ export class CTTKCModal extends Modal {
 		this.options = {
 			calendarUrl: this.plugin.settings.calendarUrl,
 			tasksPrefix: this.plugin.settings.tasksPrefix,
+			tasksDirectory: this.plugin.settings.tasksDirectory,
 			startDate: '',
 			endDate: ''
 		};
@@ -82,6 +89,22 @@ export class CTTKCModal extends Modal {
 					this.options.tasksPrefix = value;
 					this.validateInputs();
 				}));
+		
+		// Seems standart html file picker does not work well with directories
+		// Switch to something custom. Something like that for example
+		new Setting(this.contentEl)
+			.setName('Tasks directory')
+			.addText((text) => {
+				text
+					.setPlaceholder('Choose your tasks directory')
+					.setValue(this.plugin.settings.tasksDirectory);
+
+				new FolderSuggest(this.app, text.inputEl)
+					.onChange((value) => {
+						this.options.tasksDirectory = value;
+						this.validateInputs();
+					});
+			});
 
 		new Setting(this.contentEl)
 			.setName('Start date')

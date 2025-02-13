@@ -1,5 +1,6 @@
 import { PluginSettingTab, Setting } from 'obsidian';
 import { CTTKCPlugin } from './cttkc-plugin';
+import { FolderSuggest } from './folder-suggest';
 
 export class SettingTab extends PluginSettingTab {
   plugin: CTTKCPlugin;
@@ -34,5 +35,19 @@ export class SettingTab extends PluginSettingTab {
           this.plugin.settings.tasksPrefix = value;
           await this.plugin.saveSettings();
         }));
+
+    new Setting(containerEl)
+      .setName('Tasks directory')
+      .addText((text) => {
+        text
+        .setPlaceholder('Choose your tasks directory')
+        .setValue(this.plugin.settings.tasksDirectory);
+
+        new FolderSuggest(this.app, text.inputEl)
+          .onChange(async (value) => {
+            this.plugin.settings.tasksDirectory = value;
+            await this.plugin.saveSettings();
+          });
+      });    
   }
 }
