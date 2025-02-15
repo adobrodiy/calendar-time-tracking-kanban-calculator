@@ -1,4 +1,7 @@
 // import { CTTKCPlugin } from './cttkc-plugin';
+import debugFactory from 'debug';
+
+const debug = debugFactory('CTTKC:Status');
 
 export enum StatusCode {
   ready = 'ready',
@@ -24,10 +27,12 @@ export class Status {
   private _onCheckUpdateFailure: IOnCheckUpdateFailure;
 
   constructor(onCheckUpdateFailure: IOnCheckUpdateFailure) {
+    debug('constructor is called');
     this._onCheckUpdateFailure = onCheckUpdateFailure;
   }
 
   update(code: StatusCode, message: string) {
+    debug('update() is called', code, message);
     this.checkUpdate(code);
     this._code = code;
     this._message = message;
@@ -37,10 +42,12 @@ export class Status {
   }
 
   addStatusUpdateListener(listener: IOnStatusUpdate) {
+    debug('addStatusUpdateListener() is called');
     this._onStatusUpdateListeners.push(listener);
   }
 
   removeStatusUpdateListener(listener: IOnStatusUpdate) {
+    debug('removeStatusUpdateListener() is called');
     this._onStatusUpdateListeners = this._onStatusUpdateListeners.filter((l) => l !== listener);
   }
 
@@ -53,6 +60,7 @@ export class Status {
   }
 
   private checkUpdate(code:StatusCode) {
+    debug('checkUpdate() is called', code);
     if (
       // ready cannot have loadingData and processingData as prev statuses
       (code === StatusCode.ready && [StatusCode.loadingData, StatusCode.processingData].includes(this._code))
@@ -66,6 +74,7 @@ export class Status {
       // processed can have only processingData as previous status
       || (code === StatusCode.processed && this._code !== StatusCode.processingData)
     ) {
+      debug('checkUpdate() check is failed', code);
       this._onCheckUpdateFailure(this._code, code);
     }
   }

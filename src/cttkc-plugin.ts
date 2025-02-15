@@ -3,6 +3,9 @@ import { ISettings } from './settings.interface';
 import { CTTKCModal } from './cttkc-modal';
 import { SettingTab } from './setting-tab';
 import { Status } from './status';
+import debugFactory from 'debug';
+
+const debug = debugFactory('CTTKC:Plugin');
 
 const DEFAULT_SETTINGS: ISettings = {
 	calendarUrl: '',
@@ -15,13 +18,17 @@ export class CTTKCPlugin extends Plugin {
   status: Status;
 
 	async onload() {
+		debug('onload() is started');
+
     this.status = new Status((oldCode, newCode) => {
       // We can throw a error there to stop status transition
-      console.log(`Unexpected plugin status transition from ${oldCode} to ${newCode}. It can be an issue`);
+			debug(`Unexpected plugin status transition from ${oldCode} to ${newCode}. It can be an issue`);
     });
 
+		debug('onload() loading settings...');
 		await this.loadSettings();
 
+		debug('onload() adding elements...')
 		// This creates an icon in the left ribbon.
 		const ribbonIconEl = this.addRibbonIcon('dice', 'CTTKC Plugin', (evt: MouseEvent) => {
 			// Called when the user clicks the icon.
@@ -46,13 +53,17 @@ export class CTTKCPlugin extends Plugin {
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new SettingTab(this));
+
+		debug('onload() is finished');
 	}
 
 	async loadSettings() {
+		debug('loadSettings() is called');
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
 	}
 
 	async saveSettings() {
+		debug('saveSettings() is called');
 		await this.saveData(this.settings);
 	}
 }

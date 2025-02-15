@@ -1,4 +1,7 @@
 import { AbstractInputSuggest, App, TFolder } from 'obsidian';
+import debugFactory from 'debug';
+
+const debug = debugFactory('CTTKC:FolderSuggest');
 
 type OnChangeCb = (val: string) => void;
 
@@ -9,17 +12,20 @@ export class FolderSuggest extends AbstractInputSuggest<string> {
   private onChangeCbs: OnChangeCb[] = [];
 
   constructor(app: App, inputEl: HTMLInputElement) {
+      debug('constructor is called');
       super(app, inputEl);
       this.inputEl = inputEl;
       this.path = this.getValue();
 
       this.onSelect((value) => {
+        debug('onSelect() cb is called');
         this.setValue(value);
         this.path = value;
         this.inputEl.dispatchEvent(new Event('input'));
       });
 
       this.inputEl.addEventListener('input', (evt: InputEvent) => {
+        debug('input eventListener is called');
         if (evt.inputType === 'insertText') {
             this.setValue(this.path);
         } else {
@@ -32,6 +38,7 @@ export class FolderSuggest extends AbstractInputSuggest<string> {
   }
 
     getSuggestions(inputStr: string): string[] {
+        debug('getSuggestions() is called', inputStr);
         if (inputStr === '') {
             inputStr = '/';
         }

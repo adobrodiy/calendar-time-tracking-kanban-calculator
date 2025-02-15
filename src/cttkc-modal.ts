@@ -3,6 +3,9 @@ import { CTTKCPlugin } from './cttkc-plugin';
 import { handleCalendarData } from './handle-calendar';
 import { StatusCode } from './status';
 import { FolderSuggest } from './folder-suggest';
+import debugFactory from 'debug';
+
+const debug = debugFactory('CTTKC:Modal');
 
 export class CTTKCModal extends Modal {
 	private plugin: CTTKCPlugin;
@@ -18,11 +21,13 @@ export class CTTKCModal extends Modal {
 	private submitButton: ButtonComponent;
 
 	constructor(plugin: CTTKCPlugin) {
+		debug('Modal constructor is called');
 		super(plugin.app);
 		this.plugin = plugin;
 	}
 
 	private validateInputs() {
+		debug('validateInputs() is called');
 		if (!this.options.calendarUrl) {
 			this.plugin.status.update(StatusCode.validationError, 'Calendar url is required');
 		} else if (!this.options.tasksDirectory) {
@@ -50,15 +55,19 @@ export class CTTKCModal extends Modal {
 
 	// It have to be arrow func as it needs context and passed as arg by link
 	private onStatusUpdate = (code: StatusCode, message: string) => {
+		debug('onStatusUpdate() is called');
 		this.statusSetting.setHeading().setName(message);
 		if ([StatusCode.validationError, StatusCode.loadingData, StatusCode.processingData].includes(code)) {
+			debug('onStatusUpdate() submit is disabled');
 			this.submitButton.setDisabled(true);
 		} else {
+			debug('onStatusUpdate() submit is enabled');
 			this.submitButton.setDisabled(false);
 		}
 	}
 
 	onOpen() {
+		debug('onOpen() is called');
 		this.setTitle('CTTKC: calculate');
 
 		this.options = {
@@ -114,7 +123,6 @@ export class CTTKCModal extends Modal {
 					.setValue('')
 					.onChange(async (value) => {
 						this.options.startDate = value;
-						console.log('options', this.options);
 						this.validateInputs();
 					});
 				text.inputEl.setAttribute('type', 'date');
@@ -128,7 +136,6 @@ export class CTTKCModal extends Modal {
 					.setValue('')
 					.onChange(async (value) => {
 						this.options.endDate = value;
-						console.log('options', this.options);
 						this.validateInputs();
 					});
 				text.inputEl.setAttribute('type', 'date');
@@ -142,7 +149,7 @@ export class CTTKCModal extends Modal {
 					.setCta()
 					.onClick(async () => {
 						// this.close();
-						console.log('options', this.options);
+						debug('submit.onClick()', this.options);
 						// onSubmit(name);
 						this.plugin.status.update(StatusCode.loadingData, 'Loading...');
 						let error, data = '';
@@ -151,6 +158,7 @@ export class CTTKCModal extends Modal {
 						} catch(e) {
 							error = e;
 							this.plugin.status.update(StatusCode.error, 'Loading data failed');
+							// notificaiton
 						}
 						
 						if (!error) {
@@ -165,13 +173,14 @@ export class CTTKCModal extends Modal {
 							} catch (e) {
 								error = e;
 								this.plugin.status.update(StatusCode.error, 'Processing data failed');
+								// notificaiton
 							}							
 						}
 
 						if (!error) {
 							this.plugin.status.update(StatusCode.processed, 'Processed');
 						} else {
-							console.error(error);
+							debug('submit.onClick() failed', error);
 						}						
 					});
 			});
@@ -182,10 +191,10 @@ export class CTTKCModal extends Modal {
 	}
 
 	onClose() {
+		debug('onClose() is called');
+
 		this.plugin.status.removeStatusUpdateListener(this.onStatusUpdate);
 
 		this.containerEl.empty();
-
-		console.log('Modal closed');
 	}
 }

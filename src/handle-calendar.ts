@@ -1,6 +1,9 @@
 import { TFile, TFolder } from 'obsidian';
 import IcalExpander from 'ical-expander';
 import { CTTKCPlugin } from './cttkc-plugin';
+import debugFactory from 'debug';
+
+const debug = debugFactory('CTTKC:handle-calendar');
 
 export async function handleCalendarData(options: {
 	plugin: CTTKCPlugin;
@@ -10,6 +13,8 @@ export async function handleCalendarData(options: {
 	startDate: string;
 	endDate: string;
 }) {
+	debug('handleCalendarData() is called', options);
+
 	const icalExpander: IcalExpander = await (new Promise((resolve) => { resolve(new IcalExpander({
 		ics: options.data,
 		maxIterations: 0
@@ -58,12 +63,12 @@ export async function handleCalendarData(options: {
 			eventAggData[t].duration = (eventAggData[t].duration || 0) + duration;
 		})
 	});
-	console.log('agg', JSON.stringify(eventAggData));
+	debug('handleCalendarData() aggregated data', eventAggData);
 
 	options.folder.children.forEach((note: TFile) => {
 		const data = eventAggData[`${options.tasksPrefix}${note.basename}`];
 		if (!data || !data.duration) {
-			console.log(`No data found for ${note.basename}`);
+			debug(`handleCalendarData() No data found for ${note.basename}`);
 			return false;
 		}
 		options.plugin.app.fileManager.processFrontMatter(note as TFile, (frontmatter) => {
@@ -73,6 +78,6 @@ export async function handleCalendarData(options: {
 			const hoursStr = hours ? `${hours}h ` : '';
 			frontmatter.duration = `${hoursStr}${minutes}m`;
 		});
-		console.log(`${note.basename} is updated`);
+		debug(`handleCalendarData() ${note.basename} is updated`);
 	});
 }

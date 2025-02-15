@@ -1,16 +1,21 @@
 import { PluginSettingTab, Setting } from 'obsidian';
 import { CTTKCPlugin } from './cttkc-plugin';
 import { FolderSuggest } from './folder-suggest';
+import debugFactory from 'debug';
+
+const debug = debugFactory('CTTKC:SettingTab');
 
 export class SettingTab extends PluginSettingTab {
   plugin: CTTKCPlugin;
 
   constructor(plugin: CTTKCPlugin) {
+    debug('constructor is called');
     super(plugin.app, plugin);
     this.plugin = plugin;
   }
 
   display(): void {
+    debug('display() is called');
     const {containerEl} = this;
 
     containerEl.empty();
