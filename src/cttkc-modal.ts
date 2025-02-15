@@ -1,9 +1,10 @@
-import { ButtonComponent, Modal, Setting, TFolder, requestUrl } from 'obsidian';
+import { ButtonComponent, Modal, Setting, TFolder, requestUrl, Notice } from 'obsidian';
 import { CTTKCPlugin } from './cttkc-plugin';
 import { handleCalendarData } from './handle-calendar';
 import { StatusCode } from './status';
 import { FolderSuggest } from './folder-suggest';
 import debugFactory from 'debug';
+import { RedNotice } from './red-notice';
 
 const debug = debugFactory('CTTKC:Modal');
 
@@ -158,7 +159,7 @@ export class CTTKCModal extends Modal {
 						} catch(e) {
 							error = e;
 							this.plugin.status.update(StatusCode.error, 'Loading data failed');
-							// notificaiton
+							new RedNotice('Loading data failed');
 						}
 						
 						if (!error) {
@@ -173,12 +174,13 @@ export class CTTKCModal extends Modal {
 							} catch (e) {
 								error = e;
 								this.plugin.status.update(StatusCode.error, 'Processing data failed');
-								// notificaiton
+								new RedNotice('Processing data failed');
 							}							
 						}
 
 						if (!error) {
 							this.plugin.status.update(StatusCode.processed, 'Processed');
+							new Notice('Tasks notes are successfully processed');
 						} else {
 							debug('submit.onClick() failed', error);
 						}						

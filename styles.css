@@ -6,3 +6,7 @@ available in the app when your plugin is enabled.
 If your plugin does not need CSS, delete this file.
 
 */
+
+.notice.red-notice {
+  background-color: rgba(var(--background-modifier-error-rgb), 0.9);
+}

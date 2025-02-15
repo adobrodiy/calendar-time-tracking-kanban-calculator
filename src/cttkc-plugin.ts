@@ -1,4 +1,4 @@
-import { Notice, Plugin } from 'obsidian';
+import { Plugin } from 'obsidian';
 import { ISettings } from './settings.interface';
 import { CTTKCModal } from './cttkc-modal';
 import { SettingTab } from './setting-tab';
@@ -28,14 +28,7 @@ export class CTTKCPlugin extends Plugin {
 		debug('onload() loading settings...');
 		await this.loadSettings();
 
-		debug('onload() adding elements...')
-		// This creates an icon in the left ribbon.
-		const ribbonIconEl = this.addRibbonIcon('dice', 'CTTKC Plugin', (evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
-		});
-		// Perform additional things with the ribbon
-		ribbonIconEl.addClass('my-plugin-ribbon-class');
+		debug('onload() adding elements...');
 
 		// This adds a status bar item to the bottom of the app.
 		// Does not work on mobile apps.
