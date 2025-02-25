@@ -101,7 +101,6 @@ export class CTTKCModal extends Modal {
 				}));
 		
 		// Seems standart html file picker does not work well with directories
-		// Switch to something custom. Something like that for example
 		new Setting(this.contentEl)
 			.setName('Tasks directory')
 			.addText((text) => {
@@ -115,6 +114,19 @@ export class CTTKCModal extends Modal {
 						this.validateInputs();
 					});
 			});
+		
+		new Setting(this.contentEl)
+			.setClass('dates-buttons-cont')
+			.addButton(btn => {
+				btn.setButtonText('Today');
+			})
+			.addButton(btn => {
+				btn.setButtonText('Yesterday');
+			})
+			.addButton(btn => {
+				btn.setButtonText('Since Monday');
+			});
+			
 
 		new Setting(this.contentEl)
 			.setName('Start date')
