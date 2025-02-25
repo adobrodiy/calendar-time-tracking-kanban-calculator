@@ -1,4 +1,3 @@
-// import { CTTKCPlugin } from './cttkc-plugin';
 import debugFactory from 'debug';
 
 const debug = debugFactory('CTTKC:Status');
@@ -15,21 +14,15 @@ export enum StatusCode {
 interface IOnStatusUpdate {
   (code: StatusCode, message: string): void|Promise<void>;
 }
-interface IOnCheckUpdateFailure {
+interface IOnStatusUpdateCheckFailure {
   (oldCode: StatusCode, newCode: StatusCode): void;
 }
 
 export class Status {
   private _code = StatusCode.ready;
   private _message = 'Ready';
-  // private _plugin: CTTKCPlugin;
   private _onStatusUpdateListeners: IOnStatusUpdate[] = [];
-  private _onCheckUpdateFailure: IOnCheckUpdateFailure;
-
-  constructor(onCheckUpdateFailure: IOnCheckUpdateFailure) {
-    debug('constructor is called');
-    this._onCheckUpdateFailure = onCheckUpdateFailure;
-  }
+  private _onStatusUpdateCheckFailureListeners: IOnStatusUpdateCheckFailure[] = [];
 
   update(code: StatusCode, message: string) {
     debug('update() is called', code, message);
@@ -49,6 +42,16 @@ export class Status {
   removeStatusUpdateListener(listener: IOnStatusUpdate) {
     debug('removeStatusUpdateListener() is called');
     this._onStatusUpdateListeners = this._onStatusUpdateListeners.filter((l) => l !== listener);
+  }
+
+  addStatusUpdateCheckFailureListener(listener: IOnStatusUpdateCheckFailure) {
+    debug('addStatusUpdateCheckFailureListener() is called');
+    this._onStatusUpdateCheckFailureListeners.push(listener);
+  }
+
+  removeStatusUpdateCheckFailureListener(listener: IOnStatusUpdateCheckFailure) {
+    debug('addStatusUpdateCheckFailureListener() is called');
+    this._onStatusUpdateCheckFailureListeners = this._onStatusUpdateCheckFailureListeners.filter((l) => l !== listener);
   }
 
   get code(): StatusCode {
@@ -75,7 +78,9 @@ export class Status {
       || (code === StatusCode.processed && this._code !== StatusCode.processingData)
     ) {
       debug('checkUpdate() check is failed', code);
-      this._onCheckUpdateFailure(this._code, code);
+      Promise.all(
+        this._onStatusUpdateCheckFailureListeners.map((listener) => listener(this._code, code))
+      );
     }
   }
 }
