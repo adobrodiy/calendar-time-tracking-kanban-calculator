@@ -19,7 +19,10 @@ export async function handleCalendarData(options: {
 		ics: options.data,
 		maxIterations: 0
 	})); }));
-	const { events } = icalExpander.between(new Date(`${options.startDate}T00:00:00.000`), new Date(`${options.endDate}T00:00:00.000`));
+	const endDateObj = new Date(options.endDate);
+	endDateObj.setDate(endDateObj.getDate() + 1);
+	const endDateStr = endDateObj.toISOString().split('T')[0];
+	const { events } = icalExpander.between(new Date(`${options.startDate}T00:00:00.000`), new Date(`${endDateStr}T00:00:00.000`));
 
 	const eventAggData: {
 		[key: string]: {

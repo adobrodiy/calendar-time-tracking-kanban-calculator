@@ -8,16 +8,18 @@ import { RedNotice } from './red-notice';
 
 const debug = debugFactory('CTTKC:Modal');
 
+interface ICTTKCModalOptions {
+	calendarUrl: string;
+	tasksPrefix: string;
+	tasksDirectory: string;
+	startDate: string;
+	endDate: string;
+}
+
 export class CTTKCModal extends Modal {
 	private plugin: CTTKCPlugin;
-	private options: {
-		calendarUrl: string;
-		tasksPrefix: string;
-		tasksDirectory: string;
-		startDate: string;
-		endDate: string;
-		folder?: TFolder;
-	};
+	private options: ICTTKCModalOptions;
+	private folder: TFolder;
 	private statusSetting: Setting;
 	private submitButton: ButtonComponent;
 
@@ -39,7 +41,7 @@ export class CTTKCModal extends Modal {
 			this.plugin.status.update(StatusCode.validationError, 'Start date is required');
 		} else if (!this.options.endDate) {
 			this.plugin.status.update(StatusCode.validationError, 'End date is required');
-		} else if (this.options.startDate >= this.options.endDate) {
+		} else if (this.options.startDate > this.options.endDate) {
 			this.plugin.status.update(StatusCode.validationError, 'Start date should be earlier than end date');
 		} else {
 			const folder = this.plugin.app.vault.getFolderByPath(this.options.tasksDirectory);
@@ -48,7 +50,7 @@ export class CTTKCModal extends Modal {
 			} else if (!folder.children.length) {
 				this.plugin.status.update(StatusCode.validationError, 'Tasks notes are not found');
 			} else {
-				this.options.folder = folder;
+				this.folder = folder;
 				this.plugin.status.update(StatusCode.ready, 'Ready to calculate');
 			}
 		}
@@ -78,6 +80,12 @@ export class CTTKCModal extends Modal {
 			startDate: '',
 			endDate: ''
 		};
+		let startDateSetting: Setting, endDateSetting: Setting;
+		let onChange: (prop: keyof ICTTKCModalOptions) => (value: string) => void;
+		onChange = (prop) => (value) => {
+			this.options[prop] = value;
+			this.validateInputs()
+		};
 
 		new Setting(this.contentEl)
 			.setName('Calendar url')
@@ -85,20 +93,14 @@ export class CTTKCModal extends Modal {
 			.addText(text => text
 				.setPlaceholder('Enter your calendar url')
 				.setValue(this.plugin.settings.calendarUrl)
-				.onChange(async (value) => {
-					this.options.calendarUrl = value;
-					this.validateInputs();
-				}));
+				.onChange(onChange('calendarUrl')));
 
 		new Setting(this.contentEl)
 			.setName('Tasks prefix')
 			.addText(text => text
 				.setPlaceholder('Enter your tasks prefix')
 				.setValue(this.plugin.settings.tasksPrefix)
-				.onChange(async (value) => {
-					this.options.tasksPrefix = value;
-					this.validateInputs();
-				}));
+				.onChange(onChange('tasksPrefix')));
 		
 		// Seems standart html file picker does not work well with directories
 		new Setting(this.contentEl)
@@ -109,49 +111,106 @@ export class CTTKCModal extends Modal {
 					.setValue(this.plugin.settings.tasksDirectory);
 
 				new FolderSuggest(this.app, text.inputEl)
-					.onChange((value) => {
-						this.options.tasksDirectory = value;
-						this.validateInputs();
-					});
+					.onChange(onChange('tasksDirectory'));
 			});
 		
 		new Setting(this.contentEl)
 			.setClass('dates-buttons-cont')
 			.addButton(btn => {
-				btn.setButtonText('Today');
+				btn
+					.setButtonText('Today')
+					.onClick(() => {
+						const startDateInput: HTMLInputElement | null = startDateSetting?.controlEl.querySelector('input#cttkc-start-date-input') || null;
+						const endDateInput: HTMLInputElement | null = endDateSetting?.controlEl.querySelector('input#cttkc-end-date-input') || null;
+						const today = new Date();
+						// const todayStr = `${today.getFullYear()}-${today.getMonth}`;
+						const todayStr = (new Date()).toISOString().split('T')[0];
+						console.log('todayStr', todayStr, new Date());
+						if (startDateInput) {
+							startDateInput.value = todayStr;
+							onChange('startDate')(todayStr);
+						} else {
+							// TODO debug
+						}
+						if (endDateInput) {
+							endDateInput.value = todayStr;
+							onChange('endDate')(todayStr);
+						} else {
+							// TODO debug
+						}
+					});
 			})
 			.addButton(btn => {
-				btn.setButtonText('Yesterday');
+				btn
+					.setButtonText('Yesterday')
+					.onClick(() => {
+						const startDateInput: HTMLInputElement | null = startDateSetting?.controlEl.querySelector('input#cttkc-start-date-input') || null;
+						const endDateInput: HTMLInputElement | null = endDateSetting?.controlEl.querySelector('input#cttkc-end-date-input') || null;
+						const yesterday = new Date();
+						yesterday.setDate(yesterday.getDate() - 1);
+						const yesterdayStr = yesterday.toISOString().split('T')[0];
+						if (startDateInput) {
+							startDateInput.value = yesterdayStr;
+							onChange('startDate')(yesterdayStr);
+						} else {
+							// TODO debug
+						}
+						if (endDateInput) {
+							endDateInput.value = yesterdayStr;
+							onChange('endDate')(yesterdayStr);
+						} else {
+							// TODO debug
+						}
+					});
 			})
 			.addButton(btn => {
-				btn.setButtonText('Since Monday');
+				btn
+					.setButtonText('Since Monday')
+					.onClick(() => {
+						const startDateInput: HTMLInputElement | null = startDateSetting?.controlEl.querySelector('input#cttkc-start-date-input') || null;
+						const endDateInput: HTMLInputElement | null = endDateSetting?.controlEl.querySelector('input#cttkc-end-date-input') || null;
+						const monday = new Date();
+						while (monday.getDay() !== 1) {
+							monday.setDate(monday.getDate() - 1);
+						}
+						const mondayStr = monday.toISOString().split('T')[0];
+						const todayStr = (new Date()).toISOString().split('T')[0];
+						if (startDateInput) {
+							startDateInput.value = mondayStr;
+							onChange('startDate')(mondayStr);
+						} else {
+							// TODO debug
+						}
+						if (endDateInput) {
+							endDateInput.value = todayStr;
+							onChange('endDate')(todayStr);
+						} else {
+							// TODO debug
+						}
+					});
 			});
 			
 
-		new Setting(this.contentEl)
+		startDateSetting = new Setting(this.contentEl)
 			.setName('Start date')
 			.addText(text => {
 				text
 					.setPlaceholder('Choose start date')
 					.setValue('')
-					.onChange(async (value) => {
-						this.options.startDate = value;
-						this.validateInputs();
-					});
+					.onChange(onChange('startDate'));
 				text.inputEl.setAttribute('type', 'date');
+				text.inputEl.setAttribute('id', 'cttkc-start-date-input');
 			});
 
-		new Setting(this.contentEl)
+		endDateSetting = new Setting(this.contentEl)
 			.setName('End date')
 			.addText(text => {
 				text
 					.setPlaceholder('Choose end date')
 					.setValue('')
-					.onChange(async (value) => {
-						this.options.endDate = value;
-						this.validateInputs();
-					});
+					.onChange(onChange('endDate'));
 				text.inputEl.setAttribute('type', 'date');
+				text.inputEl.setAttribute('id', 'cttkc-end-date-input');
 			});
 
 		this.statusSetting = new Setting(this.contentEl)
@@ -181,7 +240,7 @@ export class CTTKCModal extends Modal {
 									plugin: this.plugin,
 									data,
 									...this.options,
-									folder: this.options.folder as TFolder
+									folder: this.folder as TFolder
 								});
 							} catch (e) {
 								error = e;
