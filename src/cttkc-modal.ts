@@ -22,6 +22,8 @@ export class CTTKCModal extends Modal {
 	private folder: TFolder;
 	private statusSetting: Setting;
 	private submitButton: ButtonComponent;
+	private startDateSetting: Setting;
+	private endDateSetting: Setting;
 
 	constructor(plugin: CTTKCPlugin) {
 		debug('Modal constructor is called');
@@ -80,7 +82,7 @@ export class CTTKCModal extends Modal {
 			startDate: '',
 			endDate: ''
 		};
-		let startDateSetting: Setting, endDateSetting: Setting;
+
 		let onChange: (prop: keyof ICTTKCModalOptions) => (value: string) => void;
 		onChange = (prop) => (value) => {
 			this.options[prop] = value;
@@ -119,79 +121,21 @@ export class CTTKCModal extends Modal {
 			.addButton(btn => {
 				btn
 					.setButtonText('Today')
-					.onClick(() => {
-						const startDateInput: HTMLInputElement | null = startDateSetting?.controlEl.querySelector('input#cttkc-start-date-input') || null;
-						const endDateInput: HTMLInputElement | null = endDateSetting?.controlEl.querySelector('input#cttkc-end-date-input') || null;
-						const today = new Date();
-						// const todayStr = `${today.getFullYear()}-${today.getMonth}`;
-						const todayStr = (new Date()).toISOString().split('T')[0];
-						console.log('todayStr', todayStr, new Date());
-						if (startDateInput) {
-							startDateInput.value = todayStr;
-							onChange('startDate')(todayStr);
-						} else {
-							// TODO debug
-						}
-						if (endDateInput) {
-							endDateInput.value = todayStr;
-							onChange('endDate')(todayStr);
-						} else {
-							// TODO debug
-						}
-					});
+					.onClick(this.onDatesBtnClick('today'));
 			})
 			.addButton(btn => {
 				btn
 					.setButtonText('Yesterday')
-					.onClick(() => {
-						const startDateInput: HTMLInputElement | null = startDateSetting?.controlEl.querySelector('input#cttkc-start-date-input') || null;
-						const endDateInput: HTMLInputElement | null = endDateSetting?.controlEl.querySelector('input#cttkc-end-date-input') || null;
-						const yesterday = new Date();
-						yesterday.setDate(yesterday.getDate() - 1);
-						const yesterdayStr = yesterday.toISOString().split('T')[0];
-						if (startDateInput) {
-							startDateInput.value = yesterdayStr;
-							onChange('startDate')(yesterdayStr);
-						} else {
-							// TODO debug
-						}
-						if (endDateInput) {
-							endDateInput.value = yesterdayStr;
-							onChange('endDate')(yesterdayStr);
-						} else {
-							// TODO debug
-						}
-					});
+					.onClick(this.onDatesBtnClick('yesterday'));
 			})
 			.addButton(btn => {
 				btn
 					.setButtonText('Since Monday')
-					.onClick(() => {
-						const startDateInput: HTMLInputElement | null = startDateSetting?.controlEl.querySelector('input#cttkc-start-date-input') || null;
-						const endDateInput: HTMLInputElement | null = endDateSetting?.controlEl.querySelector('input#cttkc-end-date-input') || null;
-						const monday = new Date();
-						while (monday.getDay() !== 1) {
-							monday.setDate(monday.getDate() - 1);
-						}
-						const mondayStr = monday.toISOString().split('T')[0];
-						const todayStr = (new Date()).toISOString().split('T')[0];
-						if (startDateInput) {
-							startDateInput.value = mondayStr;
-							onChange('startDate')(mondayStr);
-						} else {
-							// TODO debug
-						}
-						if (endDateInput) {
-							endDateInput.value = todayStr;
-							onChange('endDate')(todayStr);
-						} else {
-							// TODO debug
-						}
-					});
+					.onClick(this.onDatesBtnClick('sinceMonday'));
 			});
 			
 
-		startDateSetting = new Setting(this.contentEl)
+		this.startDateSetting = new Setting(this.contentEl)
 			.setName('Start date')
 			.addText(text => {
 				text
@@ -202,7 +146,7 @@ export class CTTKCModal extends Modal {
 				text.inputEl.setAttribute('id', 'cttkc-start-date-input');
 			});
 
-		endDateSetting = new Setting(this.contentEl)
+		this.endDateSetting = new Setting(this.contentEl)
 			.setName('End date')
 			.addText(text => {
 				text
@@ -219,43 +163,7 @@ export class CTTKCModal extends Modal {
 				btn
 					.setButtonText('Submit')
 					.setCta()
-					.onClick(async () => {
-						// this.close();
-						debug('submit.onClick()', this.options);
-						// onSubmit(name);
-						this.plugin.status.update(StatusCode.loadingData, 'Loading...');
-						let error, data = '';
-						try {
-							data = (await requestUrl(this.options.calendarUrl)).text;
-						} catch(e) {
-							error = e;
-							this.plugin.status.update(StatusCode.error, 'Loading data failed');
-							new RedNotice('Loading data failed');
-						}
-						
-						if (!error) {
-							this.plugin.status.update(StatusCode.processingData, 'Processing...');
-							try {
-								await handleCalendarData({
-									plugin: this.plugin,
-									data,
-									...this.options,
-									folder: this.folder as TFolder
-								});
-							} catch (e) {
-								error = e;
-								this.plugin.status.update(StatusCode.error, 'Processing data failed');
-								new RedNotice('Processing data failed');
-							}							
-						}
-
-						if (!error) {
-							this.plugin.status.update(StatusCode.processed, 'Processed');
-							new Notice('Tasks notes are successfully processed');
-						} else {
-							debug('submit.onClick() failed', error);
-						}						
-					});
+					.onClick(() => this.submit());
 			});
 
 		this.plugin.status.addStatusUpdateListener(this.onStatusUpdate);
@@ -269,5 +177,94 @@ export class CTTKCModal extends Modal {
 		this.plugin.status.removeStatusUpdateListener(this.onStatusUpdate);
 
 		this.containerEl.empty();
+	}
+
+	private onDatesBtnClick(ctxDate: 'today'|'yesterday'|'sinceMonday') {
+		return () => {
+			debug('onDatesBtnClick() is called', ctxDate);
+			const startDateInput: HTMLInputElement | null = this.startDateSetting?.controlEl.querySelector('input#cttkc-start-date-input') || null;
+			const endDateInput: HTMLInputElement | null = this.endDateSetting?.controlEl.querySelector('input#cttkc-end-date-input') || null;
+			let startDate: Date, endDate: Date;
+			if (ctxDate === 'today') {
+				startDate = new Date();
+				endDate = startDate;
+			} else if (ctxDate === 'yesterday') {
+				startDate = new Date();
+				startDate.setDate(startDate.getDate() - 1);
+				endDate = startDate;
+			} else if (ctxDate === 'sinceMonday') {
+				startDate = new Date();
+				while (startDate.getDay() !== 1) {
+					startDate.setDate(startDate.getDate() - 1);
+				}
+				endDate = new Date();
+			} else {
+				debug('onDatesBtnClick() icorrect ctxDate', ctxDate);
+				startDate = new Date();
+				endDate = startDate;
+				new RedNotice('Something went wrong');
+			}
+			const startYearStr = startDate.getFullYear();
+			const startMonthStr = (1 + startDate.getMonth()).toString().padStart(2, '0');
+			const startDateStr = startDate.getDate().toString().padStart(2, '0');
+			const startStr = `${startYearStr}-${startMonthStr}-${startDateStr}`;
+			const endYearStr = endDate.getFullYear();
+			const endMonthStr = (1 + endDate.getMonth()).toString().padStart(2, '0');
+			const endDateStr = endDate.getDate().toString().padStart(2, '0');
+			const endStr = `${endYearStr}-${endMonthStr}-${endDateStr}`;
+			if (startDateInput) {
+				startDateInput.value = startStr;
+				this.options['startDate'] = startStr;
+			} else {
+				debug('onDatesBtnClick() cannot find startDateInput', ctxDate);
+				new RedNotice('Something went wrong');
+			}
+			if (endDateInput) {
+				endDateInput.value = endStr;
+				this.options['endDate'] = endStr;
+			} else {
+				debug('onDatesBtnClick() cannot find endDateInput', ctxDate);
+				new RedNotice('Something went wrong');
+			}
+			if (startDateInput || endDateInput) {
+				this.validateInputs();
+			}
+		};
+	}
+
+	private async submit() {
+		debug('submit()', this.options);
+		this.plugin.status.update(StatusCode.loadingData, 'Loading...');
+		let error, data = '';
+		try {
+			data = (await requestUrl(this.options.calendarUrl)).text;
+		} catch(e) {
+			error = e;
+			this.plugin.status.update(StatusCode.error, 'Loading data failed');
+			new RedNotice('Loading data failed');
+		}
+		
+		if (!error) {
+			this.plugin.status.update(StatusCode.processingData, 'Processing...');
+			try {
+				await handleCalendarData({
+					plugin: this.plugin,
+					data,
+					...this.options,
+					folder: this.folder as TFolder
+				});
+			} catch (e) {
+				error = e;
+				this.plugin.status.update(StatusCode.error, 'Processing data failed');
+				new RedNotice('Processing data failed');
+			}							
+		}
+
+		if (!error) {
+			this.plugin.status.update(StatusCode.processed, 'Processed');
+			new Notice('Tasks notes are successfully processed');
+		} else {
+			debug('submit() failed', error);
+		}
 	}
 }
